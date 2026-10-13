@@ -72,7 +72,7 @@ tableformer = [
 bench = [
     "olmocr>=0.2",                # Official olmOCR-Bench scorer + KaTeX oracle
     "fuzzysearch>=0.8",           # olmocr dep
-    "playwright>=1.40",           # olmocr KaTeX rendering
+    "playwright>=1.63.0",           # olmocr KaTeX rendering
     "lxml>=5.2",                  # bs4 'xml' parser — olmocr MathML compare (fail-soft to raw-XML comparison without it)
 ]
 dev = [
