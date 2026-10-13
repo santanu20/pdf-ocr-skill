@@ -1,0 +1,47 @@
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python + uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: '3.13'
+
+      - name: Install deps
+        run: uv sync --extra dev
+
+      # Full ruff run is tracked hygiene debt; gate on the codes that
+      # indicate real defects: undefined names, undefined exports,
+      # redefinition shadowing, syntax errors.
+      - name: Lint (defect-class gate)
+        run: uvx ruff check scripts --select E9,F821,F822,F811
+
+      - name: Test
+        run: uv run --extra dev python -m pytest scripts/scientific_parser/tests -q
+
+      - name: Build
+        run: uv build
+
+      - name: Smoke (born-digital path, no network)
+        run: |
+          uv run python - <<'EOF'
+          import sys
+          sys.path.insert(0, "scripts")
+          sys.argv = ["pdf_ocr.py", "--help"]
+          import pdf_ocr  # imports full dependency graph
+          print("import + arg graph OK")
+          EOF

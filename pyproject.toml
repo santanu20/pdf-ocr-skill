@@ -1,0 +1,143 @@
+[project]
+name = "pdf-ocr"
+version = "2026.8.12"
+description = "SOTA scientific PDF extraction: per-component specialist dispatch via lightweight ONNX models"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "santanu20" }]
+
+# ─── Dependencies ────────────────────────────────────────────────────────────
+# Default install = PURE ONNX (CPU, no torch): RapidOCR, RapidLaTeX,
+# RapidTable, RapidLayout, DocLayout-YOLO-ONNX, huggingface-hub. Every
+# default backend runs on onnxruntime.
+#
+# Tier 2 (torch specialists) is OPTIONAL (audit 2026-08-21): measurement
+# showed UniMERNet/DECIMER/torch-DocLayout-YOLO sit on opt-in backends
+# ("unimernet", "decimer", "doclayout-yolo") that the shipped pipeline
+# NEVER selects — default equation = RapidLaTeX (ONNX), default layout =
+# DocLayout-YOLO-ONNX. Zero firings across all full bench runs. Installing
+# `--extra tier2` re-enables them. This supersedes the 2026-08-16 "torch
+# specialists are hard deps" policy (documented reversal with evidence).
+# molscribe stays excluded (pins torch<2.0, conflicts with torch>=2.7).
+dependencies = [
+    "pymupdf>=1.24",              # PDF rendering + text-layer extraction
+    "pypdfium2>=4.30",            # Fast alternate PDF rendering
+    "pypdf>=4.0",                 # Page count + metadata
+    "pdfplumber>=0.11",           # Table lattice detection
+    "camelot-py>=2.0",            # Tables strategy 5/6 (lattice+stream)
+    "pykatex>=0.1",               # KaTeX verification oracle (4 modules)
+    "periodictable>=1.6",         # Element symbols (pdf_ocr.py)
+    "pint>=0.24",                 # Scientific unit registry (unit_engine)
+    "fonttools>=4.50",             # CFF glyph decode — CMEX math (font_math_detector, lazy import)
+    "ftfy>=6.0",                  # Mojibake repair (pdf_ocr.py text layer)
+    "rapidocr>=3.0",              # PP-OCRv6 — text OCR engine (ONNX, CPU)
+    "rapid-latex-ocr",            # Equation → LaTeX specialist (ONNX)
+    "rapid-table",                # Table → HTML specialist (ONNX)
+    "rapid-layout",               # Layout region detection (ONNX)
+    "onnxruntime>=1.18",          # Inference runtime (ONNX providers)
+    "huggingface-hub>=0.24",      # Model downloads from HF
+    "symspellpy>=6.7",            # OCR error correction dictionary
+    "Pillow>=10.0",               # Image manipulation
+    "numpy>=1.26",                # Array ops (2.x; rapid_latex_ocr patched at runtime)
+    "requests>=2.32",             # Model download
+    "tqdm>=4.66",                 # Progress bars
+    "img2table>=2.0.0",
+    "rapidfuzz>=3.0",              # Footer/header strip containment matching
+                                   # (fast path _strip_hf_lines; fail-open
+                                   # difflib fallback misses journal footers)
+]
+
+[project.optional-dependencies]
+tier2 = [
+    # Torch specialists — opt-in backends only, never default-selected
+    # (evidence: 0 firings in every full bench run; default backends are
+    # the ONNX equivalents). ~780MB saved on default install.
+    "decimer",                    # OCSR: chemical structure → SMILES
+    "unimernet",                  # Equation recognition (backend="unimernet")
+    "doclayout-yolo-slim",        # Layout (backend="doclayout-yolo", torch)
+    "torch>=2.7.1,<2.10",         # CPU-only (<2.10 excludes PyPI CUDA 2.13.0)
+    "torchvision>=0.22,<0.24",    # CPU-only (matches torch)
+]
+
+# Bench/dev tooling. NOTE olmocr is ALSO runtime-load-bearing (KaTeX
+# oracle in equation_cascade — guarded fail-open without it).
+# TableFormer table-structure backend (ODL-hybrid class): CPU torch +
+# IBM docling-ibm-models regressor. Weights stay local
+# (.models/tableformer). Opt-in to keep default install lean.
+tableformer = [
+    "docling-ibm-models>=2.0.0",
+]
+
+bench = [
+    "olmocr>=0.2",                # Official olmOCR-Bench scorer + KaTeX oracle
+    "fuzzysearch>=0.8",           # olmocr dep
+    "playwright>=1.40",           # olmocr KaTeX rendering
+    "lxml>=5.2",                  # bs4 'xml' parser — olmocr MathML compare (fail-soft to raw-XML comparison without it)
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "py-spy>=0.4",                # LIVE-SYSTEMS DISCIPLINE: sampling profiler
+                                  # for long-running benchmark/engine processes
+                                  # (attach: py-spy dump/record --pid <worker>)
+]
+
+# Force torch/torchvision to the CPU-only wheel index (no CUDA download).
+# Combined with index-strategy + explicit index to avoid uv's dependency-
+# confusion guard (pytorch-cpu also mirrors some plain packages like `requests`
+# at older versions, which trips the default first-index-wins rule).
+[tool.uv]
+index-strategy = "unsafe-best-match"
+# NOTE (2026-08-21): rapid* pin opencv-python, camelot-py pins
+# opencv-python-headless — uv cannot substitute requirement NAMES
+# (override-dependencies only constrains versions), so dual cv2 installs
+# are resolver-inherent. One shadows the other at import; harmless in
+# practice (server, no GUI). Collapsing needs upstream requirement
+# changes, not a lock trick.
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+
+[project.urls]
+Documentation = "https://github.com/santanu20/pdf-ocr-skill/blob/main/SKILL.md"
+Repository = "https://github.com/santanu20/pdf-ocr-skill"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["scripts"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "C4", "UP"]
+ignore = ["E501"]  # line length handled by formatter
+
+# Per-file ignores: pre-existing patterns that are intentional and should
+# not block new code's ruff signal.
+[tool.ruff.lint.per-file-ignores]
+# Test files need sys.path manipulation BEFORE scientific_parser imports
+# (pattern established by test_contract.py). E402 = module-level import
+# not at top of file — required for sys.path.insert() to fire first.
+"scripts/scientific_parser/tests/*.py" = ["E402"]
+# `from shared import *` is the project's single-source-of-truth pattern
+# (see shared.py docstring). Accepted consequences:
+#   F403 = unable to detect undefined names from star import
+#   F405 = specific name may be undefined from star imports
+#   E402 = module-level import not at top (log = getLogger() between imports
+#          is a pre-existing pattern across many files)
+"scripts/shared.py" = ["F403", "F405", "E402"]
+"scripts/pdf_ocr.py" = ["F403", "F405", "E402"]
+"scripts/scientific_parser/**/*.py" = ["F403", "F405", "E402"]
