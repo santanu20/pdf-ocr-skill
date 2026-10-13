@@ -35,7 +35,7 @@ dependencies = [
     "rapid-latex-ocr",            # Equation → LaTeX specialist (ONNX)
     "rapid-table",                # Table → HTML specialist (ONNX)
     "rapid-layout",               # Layout region detection (ONNX)
-    "onnxruntime>=1.18",          # Inference runtime (ONNX providers)
+    "onnxruntime>=1.31.0",          # Inference runtime (ONNX providers)
     "huggingface-hub>=0.24",      # Model downloads from HF
     "symspellpy>=6.7",            # OCR error correction dictionary
     "Pillow>=10.0",               # Image manipulation
