@@ -16,10 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python + uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          python-version: '3.13'
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v10.3.0  # no floating major tag upstream; pin exact
+        # Python itself comes from .python-version via `uv sync`, which
+        # downloads the managed CPython automatically.
 
       - name: Install deps
         run: uv sync --extra dev
