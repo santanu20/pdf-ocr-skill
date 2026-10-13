@@ -2163,11 +2163,10 @@ def main():
         hf_lines = (page_meta or {}).get("hf_lines") or []
         if not hf_lines or not t:
             return t
-        try:
-            from rapidfuzz import fuzz as _rfz
-        except ImportError:
-            _rfz = None
-        import difflib
+        # Hard dependency (base [project].dependencies): the pass-1
+        # whole-line blanker strips WITHOUT containment verification when
+        # rapidfuzz is missing, so absence must crash, not degrade.
+        from rapidfuzz import fuzz as _rfz
 
         def _norm(x):
             return re.sub(r"\s+", " ", x).strip().lower()
@@ -2279,10 +2278,9 @@ def main():
                 # the line to actually span the footer.
                 if len(tl_n) < 0.5 * len(hf_n):
                     continue
-                if _rfz is not None:
-                    align = _rfz.partial_ratio_alignment(hf_n, tl_n)
-                    if align is None or align.score < 85:
-                        continue
+                align = _rfz.partial_ratio_alignment(hf_n, tl_n)
+                if align is None or align.score < 85:
+                    continue
                 if _os_p.environ.get("PDF_OCR_DEBUG_HF"):
                     print(f"[HF] BLANK {i}: {tl[:60]!r} (hf={hf_n[:40]!r})", file=sys.stderr)
                 lines[i] = ""
@@ -2296,42 +2294,29 @@ def main():
                 tl_n, tl_map = _norm_map(tl)
                 if len(tl_n) <= 3 * len(hf_n) + 20:
                     continue  # already rejected in pass 1
-                if _rfz is not None:
-                    # rapidfuzz 3.x: dest_start/dest_end (dest_slice was
-                    # removed; AttributeError crashed whole-doc runs).
-                    align = _rfz.partial_ratio_alignment(hf_n, tl_n)
-                    if align is None or align.score < 85:
-                        continue
-                    # MID-LINE BODY-REPETITION GUARD (2026-09-03): cut
-                    # only spans at the line's START or END. A flagged
-                    # sidebar fragment ('up to 3,000', 20_pg46 bottom
-                    # band) fuzzy-matches the SAME phrase inside a
-                    # mid-page body sentence ('…designs will have up to
-                    # 3,000 individual coils…') and the cut deleted
-                    # body words, leaving 'will have  individual
-                    # coils'. Merged-column footer slices sit at a line
-                    # edge; body repetitions sit inside with words on
-                    # both sides.
-                    _s0, _s1 = align.dest_start, align.dest_end
-                    if _s0 > 4 and _s1 < len(tl_n) - 4:
-                        continue
-                    cut = _cut_norm_span(tl, tl_map, _s0, _s1)
-                    if cut is not None:
-                        lines[i] = cut
-                        break
+                # rapidfuzz 3.x: dest_start/dest_end (dest_slice was
+                # removed; AttributeError crashed whole-doc runs).
+                align = _rfz.partial_ratio_alignment(hf_n, tl_n)
+                if align is None or align.score < 85:
                     continue
-                else:
-                    import difflib as _dl
-
-                    sm = _dl.SequenceMatcher(None, hf_n, tl_n)
-                    m = sm.find_longest_match(0, len(hf_n), 0, len(tl_n))
-                    if m.size < 0.8 * len(hf_n):
-                        continue
-                    if m.b > 4 and m.b + m.size < len(tl_n) - 4:
-                        continue
-                    cut = _cut_norm_span(tl, tl_map, m.b, m.b + m.size)
-                    if cut is not None:
-                        lines[i] = cut
+                # MID-LINE BODY-REPETITION GUARD (2026-09-03): cut
+                # only spans at the line's START or END. A flagged
+                # sidebar fragment ('up to 3,000', 20_pg46 bottom
+                # band) fuzzy-matches the SAME phrase inside a
+                # mid-page body sentence ('…designs will have up to
+                # 3,000 individual coils…') and the cut deleted
+                # body words, leaving 'will have  individual
+                # coils'. Merged-column footer slices sit at a line
+                # edge; body repetitions sit inside with words on
+                # both sides.
+                _s0, _s1 = align.dest_start, align.dest_end
+                if _s0 > 4 and _s1 < len(tl_n) - 4:
+                    continue
+                cut = _cut_norm_span(tl, tl_map, _s0, _s1)
+                if cut is not None:
+                    lines[i] = cut
+                    break
+                continue
         # EDGE-TOKEN PAGE NUMBERS (2026-08-31): a bare-number hf that
         # same-row extraction or reflow FUSED into the first/last content
         # line survives whole-line matching (measured fe8d3e95: the running
