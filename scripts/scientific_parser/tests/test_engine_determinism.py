@@ -27,11 +27,36 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pytest
+
 SCRIPTS = Path(__file__).resolve().parents[2]
 ENGINE = SCRIPTS / "pdf_ocr.py"
 VENV_PY = SCRIPTS.parent / ".venv" / "bin" / "python"
 
 BODY = "Determinism pin body prose line number three with plain words."
+
+
+def _engine_stack_ok() -> bool:
+    """Engine subprocess hard-gates on the full local stack (poppler
+    tools + Ollama daemon + vision models). CI runners provision poppler
+    only, so these end-to-end pins skip there and run wherever the
+    README-documented stack is installed."""
+    import shutil
+    import urllib.request
+
+    if shutil.which("ollama") is None:
+        return False
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=2):
+            return True
+    except Exception:
+        return False
+
+
+requires_engine_stack = pytest.mark.skipif(
+    not _engine_stack_ok(),
+    reason="engine hard-dep gate needs full local stack (Ollama daemon + models)",
+)
 
 
 def _make_fixture(path: Path) -> None:
@@ -76,6 +101,7 @@ def _run(pdf: Path, out_prefix: Path, cache_dir: Path, no_cache: bool) -> dict:
     }
 
 
+@requires_engine_stack
 def test_fresh_extraction_deterministic() -> None:
     with tempfile.TemporaryDirectory() as td:
         tdp = Path(td)
@@ -86,6 +112,7 @@ def test_fresh_extraction_deterministic() -> None:
     assert a == b, "fresh --no-cache extractions differ (engine nondeterminism)"
 
 
+@requires_engine_stack
 def test_cache_replay_equals_fresh() -> None:
     with tempfile.TemporaryDirectory() as td:
         tdp = Path(td)

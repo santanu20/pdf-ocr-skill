@@ -22,6 +22,7 @@ Contract:
   3. Body text present in BOTH surfaces.
   4. md (minus meta comments) == jsonl text (parity invariant).
 """
+
 from __future__ import annotations
 
 import json
@@ -32,9 +33,34 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pytest
+
 SCRIPTS = Path(__file__).resolve().parents[2]
 ENGINE = SCRIPTS / "pdf_ocr.py"
 VENV_PY = SCRIPTS.parent / ".venv" / "bin" / "python"
+
+
+def _engine_stack_ok() -> bool:
+    """Engine subprocess hard-gates on the full local stack (poppler
+    tools + Ollama daemon + vision models). CI runners provision poppler
+    only, so this end-to-end pin skips there and runs wherever the
+    README-documented stack is installed."""
+    import shutil
+    import urllib.request
+
+    if shutil.which("ollama") is None:
+        return False
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=2):
+            return True
+    except Exception:
+        return False
+
+
+requires_engine_stack = pytest.mark.skipif(
+    not _engine_stack_ok(),
+    reason="engine hard-dep gate needs full local stack (Ollama daemon + models)",
+)
 
 FOOTERS = [
     "Midwifery xxx (xxxx) xxx-xxx",
@@ -65,6 +91,7 @@ def _make_fixture(path: Path) -> None:
     doc.close()
 
 
+@requires_engine_stack
 def test_fastpath_hf_strip_feeds_jsonl_and_md():
     if not VENV_PY.exists():
         _skip("skill venv missing")

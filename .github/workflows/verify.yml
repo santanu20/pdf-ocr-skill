@@ -24,6 +24,9 @@ jobs:
       - name: Install deps
         run: uv sync --extra dev
 
+      - name: Install system deps (poppler)
+        run: sudo apt-get update -q && sudo apt-get install -y -q poppler-utils
+
       # Full ruff run is tracked hygiene debt; gate on the codes that
       # indicate real defects: undefined names, undefined exports,
       # redefinition shadowing, syntax errors.
