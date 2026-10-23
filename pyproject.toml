@@ -23,7 +23,7 @@ authors = [{ name = "santanu20" }]
 dependencies = [
     "pymupdf>=1.24",              # PDF rendering + text-layer extraction
     "pypdfium2>=4.30",            # Fast alternate PDF rendering
-    "pypdf>=4.0",                 # Page count + metadata
+    "pypdf>=6.21.1",                 # Page count + metadata
     "pdfplumber>=0.11",           # Table lattice detection
     "camelot-py>=2.0",            # Tables strategy 5/6 (lattice+stream)
     "pykatex>=0.1",               # KaTeX verification oracle (4 modules)
