@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v10.3.0  # no floating major tag upstream; pin exact
+        uses: astral-sh/setup-uv@v10.3.2  # no floating major tag upstream; pin exact
         # Python itself comes from .python-version via `uv sync`, which
         # downloads the managed CPython automatically.
 
