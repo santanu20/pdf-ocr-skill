@@ -29,7 +29,7 @@ dependencies = [
     "pykatex>=0.1",               # KaTeX verification oracle (4 modules)
     "periodictable>=1.6",         # Element symbols (pdf_ocr.py)
     "pint>=0.24",                 # Scientific unit registry (unit_engine)
-    "fonttools>=4.50",             # CFF glyph decode — CMEX math (font_math_detector, lazy import)
+    "fonttools>=4.66.1",             # CFF glyph decode — CMEX math (font_math_detector, lazy import)
     "ftfy>=6.0",                  # Mojibake repair (pdf_ocr.py text layer)
     "rapidocr>=3.0",              # PP-OCRv6 — text OCR engine (ONNX, CPU)
     "rapid-latex-ocr",            # Equation → LaTeX specialist (ONNX)
