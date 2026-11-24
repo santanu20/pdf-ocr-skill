@@ -43,7 +43,7 @@ dependencies = [
     "requests>=2.32",             # Model download
     "tqdm>=4.66",                 # Progress bars
     "img2table>=2.0.0",
-    "rapidfuzz>=3.0",              # Footer/header strip containment matching
+    "rapidfuzz>=3.14.6",              # Footer/header strip containment matching
                                    # (fast path _strip_hf_lines; fail-open
                                    # difflib fallback misses journal footers)
 ]
